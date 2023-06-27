@@ -1,23 +1,48 @@
-import logo from './logo.svg';
-import './App.css';
+import { useState, useRef } from "react";
+import InfiniteScroll from "./InfiniteScroll";
+import "./App.css";
 
 function App() {
+  const [data, setData] = useState([]);
+  const [query, setQuery] = useState("");
+  const controllerRef = useRef(null);
+
+  const getData = async (query, pageNumber) => {
+    if (!query || !pageNumber) return;
+    try {
+      if (controllerRef.current) controllerRef.current.abort();
+      controllerRef.current = new AbortController();
+      const response = await fetch(
+        "https://openlibrary.org/search.json?" +
+          new URLSearchParams({
+            q: query,
+            page: pageNumber,
+          }),
+        { signal: controllerRef.current.signal }
+      );
+      const searchData = await response.json();
+      setData((prev) => [...prev, ...searchData.docs]);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const renderListItem = ({ title, key }, ref) => (
+    <div key={key} ref={ref}>
+      {title}
+    </div>
+  );
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      <InfiniteScroll
+        renderListItem={renderListItem}
+        query={query}
+        data={data}
+        getData={getData}
+        setData={setData}
+      />
     </div>
   );
 }
